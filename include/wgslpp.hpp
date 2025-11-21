@@ -293,7 +293,12 @@ private:
 class Preprocessor {
 public:
     explicit Preprocessor(Options opts = {})
-        : opts_(std::move(opts)) {}
+        : opts_(std::move(opts)) {
+          // Treat empty include path as current directory
+          if (opts_.include_path.empty()) {
+              opts_.include_path = ".";
+          }
+        }
 
     std::string preprocess_file(const std::string& filename) {
         include_stack.clear();
@@ -338,6 +343,40 @@ private:
     }
 
     //----------------------------------------------------------
+    // Expand macros in a line of code
+    //----------------------------------------------------------
+    std::string expandMacros(const std::string& line) {
+        std::string result;
+        size_t pos = 0;
+        while (pos < line.size()) {
+            if (std::isspace((unsigned char)line[pos])) {
+                result += line[pos];
+                pos++;
+                continue;
+            }
+            if (std::isalpha((unsigned char)line[pos]) || line[pos] == '_') {
+                size_t start = pos;
+                while (pos < line.size() &&
+                       (std::isalnum((unsigned char)line[pos]) || line[pos] == '_')) {
+                    pos++;
+                }
+                std::string ident = line.substr(start, pos - start);
+
+                auto it = macros.find(ident);
+                if (it != macros.end()) {
+                    result += it->second;
+                } else {
+                    result += ident;
+                }
+            } else {
+                result += line[pos];
+                pos++;
+            }
+        }
+        return result;
+    }
+
+    //----------------------------------------------------------
     // Process a file
     //----------------------------------------------------------
     std::string processFile(const std::string& name) {
@@ -371,8 +410,11 @@ private:
             if (!t.empty() && t[0] == '#') {
                 handleDirective(t, out);
             } else {
-                if (currentActive())
-                    out << line << "\n";
+                if (currentActive()) {
+                    // Expand macros in the line before outputting
+                    std::string expanded = expandMacros(line);
+                    out << expanded << "\n";
+                }
             }
         }
 

@@ -304,3 +304,32 @@ var y : i32 = 2;
 
     REQUIRE_THROWS_AS(pp.preprocess(src), std::runtime_error);
 }
+
+TEST_CASE("define_expansion_in_code") {
+    wgslpp::Preprocessor pp;
+
+    const std::string src = R"(#define WORKGROUP_SIZE 256
+#define PI 3.14159
+
+@compute @workgroup_size(WORKGROUP_SIZE)
+fn main() {
+    let radius : f32 = 10.0;
+    let area : f32 = PI* radius * radius;
+    var threads : i32 = WORKGROUP_SIZE;
+}
+)";
+
+    std::string out = pp.preprocess(src);
+    out = normalize_newlines(out);
+
+    INFO("Preprocessor output:\n" + out);
+
+    // Macros should be expanded in code outside directives
+    REQUIRE(out.find("@workgroup_size(256)") != std::string::npos);
+    REQUIRE(out.find("let area : f32 = 3.14159* radius * radius;") != std::string::npos);
+    REQUIRE(out.find("var threads : i32 = 256;") != std::string::npos);
+
+    // The macro names themselves should not appear in the output
+    REQUIRE(out.find("WORKGROUP_SIZE") == std::string::npos);
+    REQUIRE(out.find("PI") == std::string::npos);
+}
