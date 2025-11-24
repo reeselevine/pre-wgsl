@@ -2,6 +2,9 @@
 
 This library provides a way to preprocess WGSL shader code with features like file inclusion (native only), macro definitions, and conditional compilation. It is inspired by the C/C++ preprocessor but tailored for WGSL. It is written in C++ and can be used in native applications as well as in web applications via WebAssembly.
 
+## Playground
+
+https://reeselevine.github.io/pre-wgsl/
 
 ## Features
 
